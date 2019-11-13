@@ -8,12 +8,12 @@ import requests
 
 app = Flask(__name__)
 
-app.config['TRADIER_BEARER'] = 'uhzCQ8Lzm5Tx35faBndmsYmQgE4d'
-app.config['SECRET'] = 'XCAP05H6LoKvbRRa/QkqLNMI7cOHguaRyHzyg7n5qEkGjQmtBhz4SzYh4Fqwjyi3KJHlSXKPwVu2+bXr6CtpgQ=='
-app.config['DB_HOST'] = '35.202.171.233'
-app.config['DB_USER'] = 'admin'
-app.config['DB_PASS'] = 'team6adminpass'
-app.config['DB_NAME'] = 'transactions'
+app.config['TRADIER_BEARER'] = ''
+app.config['SECRET'] = ''
+app.config['DB_HOST'] = ''
+app.config['DB_USER'] = ''
+app.config['DB_PASS'] = ''
+app.config['DB_NAME'] = ''
 
 engine = db.create_engine('mysql+pymysql://' + app.config['DB_USER'] + ':' + app.config['DB_PASS'] + '@' + app.config['DB_HOST'] + '/' + app.config['DB_NAME'], pool_pre_ping=True)
 app.config['DB_CONN'] = engine.connect()
@@ -94,12 +94,14 @@ def transactions():
 
             sql = 'SELECT JSON_OBJECT(\'bid\', bid, \'b_type\', b_type, \'username\', username, \'t_account\', t_account, \'price\', price, \'quantity\', quantity) FROM buy_sell'
             query_res = app.config['DB_CONN'].execute(sql).fetchall()
-            parsed_query_res = ''
+            parsed_query_res = '{\'transactions\': ['
 
             for entry in query_res:
-                parsed_query_res += entry[0]
+                parsed_query_res = parsed_query_res + entry[0] + ', '
+            parsed_query_res = parsed_query_res[:len(parsed_query_res)-2]
+            parsed_query_res += ']}'
 
-            transactions = json.loads(parsed_query_res)
+            transactions = json.loads(parsed_query_res.replace('\'', '\"'))
         else:
             print('Only the admin may view banking system transactions')
 
