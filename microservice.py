@@ -8,8 +8,8 @@ import requests
 
 app = Flask(__name__)
 
-app.config['TRADIER_BEARER'] = ''
-app.config['SECRET'] = ''
+app.config['TRADIER_BEARER'] = 'uhzCQ8Lzm5Tx35faBndmsYmQgE4d'
+app.config['SECRET'] = 'XCAP05H6LoKvbRRa/QkqLNMI7cOHguaRyHzyg7n5qEkGjQmtBhz4SzYh4Fqwjyi3KJHlSXKPwVu2+bXr6CtpgQ=='
 app.config['DB_HOST'] = ''
 app.config['DB_USER'] = ''
 app.config['DB_PASS'] = ''
@@ -49,11 +49,13 @@ def buy():
         email = decoded['email']
 
         res = requests.get('http://localhost:5001/api/quotes')
-        price = json.loads(res.headers['quote'].replace('\'', '\"'))['quotes']['quote']['last']
+        new_res = res.headers['quote'][21:].replace('\'','\"')
+        new_res = json.loads(new_res[:len(new_res)-2])
+        price = new_res['last']
 
-        sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'buy\', \'' + username + '\', \'' + email + '\', \'' + str(price) + '\', \'' + quantity + '\')'
+        sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'buy\', \'' + username + '\', \'' + email + '\', \'' + str(price) + '\', \'' + str(quantity) + '\')'
         app.config['DB_CONN'].execute(sql)
-        
+
     except jwt.ExpiredSignatureError:
         print('Expired Token')
     except jwt.DecodeError:
@@ -72,9 +74,11 @@ def sell():
         email = decoded['email']
 
         res = requests.get('http://localhost:5001/api/quotes')
-        price = json.loads(res.headers['quote'].replace('\'', '\"'))['quotes']['quote']['last']
+        new_res = res.headers['quote'][21:].replace('\'','\"')
+        new_res = json.loads(new_res[:len(new_res)-2])
+        price = new_res['last']
 
-        sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'sell\', \'' + username + '\', \'' + email + '\', \'' + str(price) + '\', \'' + quantity + '\')'
+        sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'sell\', \'' + username + '\', \'' + email + '\', \'' + str(price) + '\', \'' + str(quantity) + '\')'
         app.config['DB_CONN'].execute(sql)
         
     except jwt.ExpiredSignatureError:
@@ -100,7 +104,6 @@ def transactions():
                 parsed_query_res = parsed_query_res + entry[0] + ', '
             parsed_query_res = parsed_query_res[:len(parsed_query_res)-2]
             parsed_query_res += ']}'
-
             transactions = json.loads(parsed_query_res.replace('\'', '\"'))
         else:
             print('Only the admin may view banking system transactions')
