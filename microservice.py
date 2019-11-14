@@ -40,11 +40,40 @@ def authenticate(auth):
 def save_to_db(b_type, name, acc, price, amt):
 
     if name != '' and acc != '' and float(price) > 0 and int(amt) > 0:
-        sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'' + b_type + '\', \'' + name + '\', \'' + acc + '\', \'' + str(price) + '\', \'' + str(amt) + '\')'
-        app.config['DB_CONN'].execute(sql)
+        sql = ''
+        if(b_type == 'BUY'):
+            inventory = get_stock_inventory()
+            if inventory - int(amt) > 0:
+                sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'SELL\', \'admin\', \'admin@obs.com\', \'' + str(price) + '\', \'' + str(amt) + '\'),'
+                sql += '(\'' + b_type + '\', \'' + name + '\', \'' + acc + '\', \'' + str(price) + '\', \'' + str(amt) + '\')'
+                app.config['DB_CONN'].execute(sql)
+            else:
+                required = int(amt) - inventory + 100
+                sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'BUY\', \'admin\', \'admin@obs.com\', \'' + str(price) + '\', \'' + str(required) + '\'),'
+                sql += '(\'SELL\', \'admin\', \'admin@obs.com\', \'' + str(price) + '\', \'' + str(amt) + '\'),'
+                sql += '(\'' + b_type + '\', \'' + name + '\', \'' + acc + '\', \'' + str(price) + '\', \'' + str(amt) + '\')'
+                app.config['DB_CONN'].execute(sql)
+        elif(b_type == 'SELL'):
+            sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'BUY\', \'admin\', \'admin@obs.com\', \'' + str(price) + '\', \'' + str(amt) + '\'),'
+            sql += '(\'' + b_type + '\', \'' + name + '\', \'' + acc + '\', \'' + str(price) + '\', \'' + str(amt) + '\')'
+            app.config['DB_CONN'].execute(sql)
         return 1
     else:
         return 0
+
+def get_stock_inventory():
+
+    bought_query = 'SELECT sum(quantity) AS bought FROM buy_sell WHERE (username = \'admin\' AND b_type = \'BUY\') OR (username != \'admin\' AND b_type = \'SELL\')'
+    bought = app.config['DB_CONN'].execute(bought_query).fetchall()[0][0]
+
+    sold_query = 'SELECT sum(quantity) AS sold FROM buy_sell WHERE username != \'admin\' AND b_type = \'BUY\''
+    sold = app.config['DB_CONN'].execute(sold_query).fetchall()[0][0]
+
+    if sold != None:
+        remaining = int(bought) - int(sold)
+    else:
+        remaining = bought
+    return remaining
 
 def form_buy_sell_response(b_type, name, acc, price, amt):
 
@@ -76,9 +105,6 @@ def quotes():
         quote = json.loads(res.read().decode('utf-8'))
     except http.client.HTTPException as e:
         print('Quote Request Failed')
-
-    res = make_response()
-    res.headers['quote'] = quote
 
     return quote, 200
 
