@@ -18,6 +18,50 @@ app.config['DB_NAME'] = ''
 engine = db.create_engine('mysql+pymysql://' + app.config['DB_USER'] + ':' + app.config['DB_PASS'] + '@' + app.config['DB_HOST'] + '/' + app.config['DB_NAME'], pool_pre_ping=True)
 app.config['DB_CONN'] = engine.connect()
 
+def authenticate(auth):
+    output = {
+        'uid' : '',
+        'username' : '',
+        'email' : ''
+    }
+    try:
+        decoded = jwt.decode(auth, app.config['SECRET'], algorithm='HS256')
+
+        output['uid'] = decoded['uid']
+        output['username'] = decoded['username']
+        output['email'] = decoded['email']
+        
+    except jwt.ExpiredSignatureError:
+        print('Expired Token')
+    except jwt.DecodeError:
+        print('Invalid Token')
+    return output
+
+def save_to_db(b_type, name, acc, price, amt):
+
+    if name != '' and acc != '' and float(price) > 0 and int(amt) > 0:
+        sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'' + b_type + '\', \'' + name + '\', \'' + acc + '\', \'' + str(price) + '\', \'' + str(amt) + '\')'
+        app.config['DB_CONN'].execute(sql)
+        return 1
+    else:
+        return 0
+
+def form_buy_sell_response(b_type, name, acc, price, amt):
+
+    value = float(price) * int(amt)
+    transaction = json.loads('{}')
+
+    if b_type == 'BUY':
+        output_str = "{\"TransactionType\" : \"BUY\", \"User\" : \"" + name + "\", \"Account\" : \"Savings Account\", \"Price\" : " + str(price) + ", \"Quantity\" : " + str(amt) + ", \"CostToUser\" : " + str(value)+ "}"
+    elif b_type == 'SELL':
+        output_str = "{\"TransactionType\" : \"SELL\", \"User\" : \"" + name + "\", \"Account\" : \"Savings Account\", \"Price\" : " + str(price) + ", \"Quantity\" : " + str(amt) + ", \"CostToUser\" : " + str(value)+ "}"
+    
+    try:
+        transaction = json.loads(output_str)
+    except json.JSONDecodeError:
+        print('Error while forming JSON response for transaction')
+    return transaction
+
 #utilize get requests for quotes (using auth header) and transcations (using auth header with admin user)
 #and post requests for buy and sell, returning data for the sale made/failed
 @app.route('/api/quotes', methods=["GET"])
@@ -35,85 +79,67 @@ def quotes():
 
     res = make_response()
     res.headers['quote'] = quote
-    return res
+
+    return quote, 200
 
 @app.route('/api/buy', methods=['POST'])
 def buy():
     auth = request.headers.get('auth')
     quantity = request.headers.get('quantity')
 
-    try:
-        decoded = jwt.decode(auth, app.config['SECRET'], algorithm='HS256')
-        uid = decoded['uid']
-        username = decoded['username']
-        email = decoded['email']
+    user_data = authenticate(auth)
+    
+    res = requests.get('http://localhost:5001/api/quotes')
+    new_res = res.json()
+    price = new_res['quotes']['quote']['last']
 
-        res = requests.get('http://localhost:5001/api/quotes')
-        new_res = res.headers['quote'][21:].replace('\'','\"')
-        new_res = json.loads(new_res[:len(new_res)-2])
-        price = new_res['last']
+    saved = save_to_db('BUY', user_data['username'], user_data['email'], price, quantity)
 
-        sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'buy\', \'' + username + '\', \'' + email + '\', \'' + str(price) + '\', \'' + str(quantity) + '\')'
-        app.config['DB_CONN'].execute(sql)
+    buy = form_buy_sell_response('BUY', user_data['username'], user_data['email'], price, quantity)
 
-    except jwt.ExpiredSignatureError:
-        print('Expired Token')
-    except jwt.DecodeError:
-        print('Invalid Token')
-    return 'Working on it', 200
+    return buy, 200
 
 @app.route('/api/sell', methods=['POST'])
 def sell():
     auth = request.headers.get('auth')
     quantity = request.headers.get('quantity')
 
-    try:
-        decoded = jwt.decode(auth, app.config['SECRET'], algorithm='HS256')
-        uid = decoded['uid']
-        username = decoded['username']
-        email = decoded['email']
+    user_data = authenticate(auth)
 
-        res = requests.get('http://localhost:5001/api/quotes')
-        new_res = res.headers['quote'][21:].replace('\'','\"')
-        new_res = json.loads(new_res[:len(new_res)-2])
-        price = new_res['last']
+    res = requests.get('http://localhost:5001/api/quotes')
+    new_res = res.json()
+    price = new_res['quotes']['quote']['last']
 
-        sql = 'INSERT INTO buy_sell(b_type, username, t_account, price, quantity) VALUES(\'sell\', \'' + username + '\', \'' + email + '\', \'' + str(price) + '\', \'' + str(quantity) + '\')'
-        app.config['DB_CONN'].execute(sql)
+    saved = save_to_db('SELL', user_data['username'], user_data['email'], price, quantity)
+
+    sell = form_buy_sell_response('BUY', user_data['username'], user_data['email'], price, quantity)
         
-    except jwt.ExpiredSignatureError:
-        print('Expired Token')
-    except jwt.DecodeError:
-        print('Invalid Token')
-    return 'Working on it', 200
+    return sell, 200
 
 @app.route('/api/transactions', methods=['GET'])
 def transactions():
     auth = request.headers.get('auth')
     transactions = json.loads('{}')
-    try:
-        decoded = jwt.decode(auth, app.config['SECRET'], algorithm='HS256')
-        account = decoded['email']
-        if account == 'admin@obs.com':
 
-            sql = 'SELECT JSON_OBJECT(\'bid\', bid, \'b_type\', b_type, \'username\', username, \'t_account\', t_account, \'price\', price, \'quantity\', quantity) FROM buy_sell'
-            query_res = app.config['DB_CONN'].execute(sql).fetchall()
-            parsed_query_res = '{\'transactions\': ['
+    user_data = authenticate(auth)
 
-            for entry in query_res:
-                parsed_query_res = parsed_query_res + entry[0] + ', '
-            parsed_query_res = parsed_query_res[:len(parsed_query_res)-2]
-            parsed_query_res += ']}'
-            transactions = json.loads(parsed_query_res.replace('\'', '\"'))
-        else:
-            print('Only the admin may view banking system transactions')
+    if user_data['email'] == 'admin@obs.com':
 
-    except jwt.ExpiredSignatureError:
-        print('Expired Token')
-    except jwt.DecodeError:
-        print('Invalid Token')
+        sql = 'SELECT JSON_OBJECT(\'bid\', bid, \'b_type\', b_type, \'username\', username, \'t_account\', t_account, \'price\', price, \'quantity\', quantity) FROM buy_sell'
+        query_res = app.config['DB_CONN'].execute(sql).fetchall()
+        parsed_query_res = '{\'transactions\': ['
+
+        for entry in query_res:
+            parsed_query_res = parsed_query_res + entry[0] + ', '
+        parsed_query_res = parsed_query_res[:len(parsed_query_res)-2]
+        parsed_query_res += ']}'
+        transactions = json.loads(parsed_query_res.replace('\'', '\"'))
+    else:
+        print('Only the admin may view banking system transactions')
 
     return transactions, 200
 
 if __name__ == "__main__":
+
+
     app.run(debug=True, port=5001)
