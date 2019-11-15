@@ -9,6 +9,6 @@ env_variables:
   SECRET : 'XCAP05H6LoKvbRRa/QkqLNMI7cOHguaRyHzyg7n5qEkGjQmtBhz4SzYh4Fqwjyi3KJHlSXKPwVu2+bXr6CtpgQ=='
   DB_ENGINE_STR : 'mysql+pymysql://admin:team6adminpass@35.202.171.233/transactions'
 
-handler
+handlers:
 - url: /.*
   script: microservice.app
