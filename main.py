@@ -4,7 +4,6 @@ import pymysql
 import jwt
 import http
 import json
-import requests
 import os
 
 app = Flask(__name__)
