@@ -1,4 +1,4 @@
-import microservice
+import main
 import pytest
 from pytest import *
 from _pytest.monkeypatch import MonkeyPatch
@@ -9,7 +9,7 @@ import os
 
 @pytest.fixture
 def client(request):
-    client = microservice.app.test_client()
+    client = main.app.test_client()
     yield client
 
     def teardown():
@@ -20,12 +20,12 @@ def client(request):
 
 def test_authentication():
     pass_test_token = jwt.encode({'username' : 'my_test', 'email' : 'test@py.com'},  os.getenv('SECRET'), algorithm='HS256')
-    test_pass_user_data = microservice.authenticate(pass_test_token)
+    test_pass_user_data = main.authenticate(pass_test_token)
 
     assert test_pass_user_data == {'username' : 'my_test', 'email' : 'test@py.com'}
 
     fail_decode_test_token = pass_test_token[1:]
-    test_fail_user_data = microservice.authenticate(fail_decode_test_token)
+    test_fail_user_data = main.authenticate(fail_decode_test_token)
 
     assert test_fail_user_data == 'Access token is missing or invalid'
 
@@ -37,18 +37,18 @@ def test_acceptance_save_to_db():
     price = '140.0'
     amt = 20
     inventory = 5000
-    assert microservice.save_to_db(b_type, name, acc, price, amt, inventory) == 'Bought from stock inventory'
+    assert main.save_to_db(b_type, name, acc, price, amt, inventory) == 'Bought from stock inventory'
 
     amt = 50
     inventory = 40
-    assert microservice.save_to_db(b_type, name, acc, price, amt, inventory) == 'Stock inventory overdrawn, inventory bought needed amt plus 100 and completed the buy'
+    assert main.save_to_db(b_type, name, acc, price, amt, inventory) == 'Stock inventory overdrawn, inventory bought needed amt plus 100 and completed the buy'
 
     amt = 0
-    assert microservice.save_to_db(b_type, name, acc, price, amt, inventory) == 'Invalid order amount or quoted price'
+    assert main.save_to_db(b_type, name, acc, price, amt, inventory) == 'Invalid order amount or quoted price'
 
 def test_get_delayed_price():
 
-    assert type(microservice.get_delayed_price()) == type(1.0)
+    assert type(main.get_delayed_price()) == type(1.0)
 
 def test_acceptance_buy_sell(client):
 
