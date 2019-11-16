@@ -8,4 +8,4 @@ runtime_config:
 env_variables:
   TRADIER_BEARER : 'uhzCQ8Lzm5Tx35faBndmsYmQgE4d'
   SECRET : 'XCAP05H6LoKvbRRa/QkqLNMI7cOHguaRyHzyg7n5qEkGjQmtBhz4SzYh4Fqwjyi3KJHlSXKPwVu2+bXr6CtpgQ=='
-  DB_ENGINE_STR : 'mysql+pymysql://admin:team6adminpass@35.202.171.233/transactions'
+  DB_CONN_STRING_MICHAEL : 'mysql+pymysql://admin:team6adminpass@35.202.171.233/transactions'
