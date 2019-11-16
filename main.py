@@ -148,7 +148,7 @@ def buy():
 
     if isinstance(user_data, dict):
         save_to_db('BUY', user_data['username'], account,
-                   price, quantity, get_inventory('admin'))
+                   price, quantity, get_inventory('admin'), get_inventory(user_data['username']))
         buy_res = form_buy_sell_response('BUY', user_data['username'], account, price, quantity)
         return buy_res, 200
 
@@ -167,7 +167,7 @@ def sell():
 
     if isinstance(user_data, dict):
         save_to_db('SELL', user_data['username'], account, price,
-                   quantity, get_inventory(user_data['username']))
+                   quantity, get_inventory(user_data['username']), get_inventory(user_data['username']))
         sell_res = form_buy_sell_response('SELL', user_data['username'], account, price, quantity)
         return sell_res, 200
 
